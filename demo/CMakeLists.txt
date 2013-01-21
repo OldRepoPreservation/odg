@@ -1,0 +1,10 @@
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake ${PROJECT_SOURCE_DIR}/cmake/vala)
+find_package(Vala REQUIRED)
+include("${VALA_USE_FILE}")
+vala_add_executable(demo1 demo1.vala
+                      PACKAGES gtk+-3.0
+                      OUTPUT_DIR gen
+                      CUSTOM_VAPIS ${PROJECT_SOURCE_DIR}/src/gen/odg.vapi
+                      VAPI_DIRS ${PROJECT_SOURCE_DIR}/src/gen
+                      LINK_PATH ${PROJECT_SOURCE_DIR}/src
+                      LINK_WITH odg)
