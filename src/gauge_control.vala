@@ -1,3 +1,21 @@
+// This file is part of Odg.
+
+//     Odg is free software: you can redistribute it and/or modify
+//     it under the terms of the GNU General Public License as published by
+//     the Free Software Foundation, either version 3 of the License, or
+//     (at your option) any later version.
+
+//     Odg is distributed in the hope that it will be useful,
+//     but WITHOUT ANY WARRANTY; without even the implied warranty of
+//     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//     GNU General Public License for more details.
+
+//     You should have received a copy of the GNU General Public License
+//     along with Odg.  If not, see <http://www.gnu.org/licenses/>.
+//
+// Copyright 2013 Jukka-Pekka Partanen (jukpart@gmail.com)
+
+
 using Json;
 
 class Msg {
@@ -88,10 +106,36 @@ public class GaugeControl: GLib.Object {
 	// or from a thread
 	public void check_for_msg() {
 		
+		AlarmMsg a = alarm_queue.try_pop() as AlarmMsg;
+		if(a != null) {
+			unowned List<ControlIF> l = gauge_alarms.get(a.name);
+			if(l != null) {
+				foreach(ControlIF cif in l) {
+					cif.alarm.is_valid = a.valid;
+				}	
+				return;
+			} else {
+				stderr.printf("check_for_msg: unknown alarm %s\n", a.name);
+				return;
+			}
+		}
+		
+		ValueMsg v = value_queue.try_pop() as ValueMsg;
+		if(v != null) {
+			unowned List<ControlIF> l = gauge_msgs.get(v.name);
+			if(l != null) {
+				foreach(ControlIF cif in l) {
+					cif.current_value = v.value;
+				}
+			} else {
+				stderr.printf("check_for_msg: unknown value %s\n", v.name);
+			}
+		}
 	}
 
+
 	// gauge value source and alarm source related methods begin.
-	// executed in Source thread context
+	// executed in callers context
 
 	private void raise_alarm(string name) {
 		
@@ -99,9 +143,7 @@ public class GaugeControl: GLib.Object {
 		AlarmMsg msg = new AlarmMsg();
 		msg.name = name;
 		msg.valid = true;
-		alarm_queue.@lock();
 		alarm_queue.push(msg);
-		alarm_queue.unlock();
 	}
 	
 	private void clear_alarm(string name) {
@@ -110,9 +152,7 @@ public class GaugeControl: GLib.Object {
 		AlarmMsg msg = new AlarmMsg();
 		msg.name = name;
 		msg.valid = false;
-		alarm_queue.@lock();
 		alarm_queue.push(msg);
-		alarm_queue.unlock();
 	}
 
 	private void set_value(string name, double value) {
@@ -122,9 +162,7 @@ public class GaugeControl: GLib.Object {
 		ValueMsg msg = new ValueMsg();
 		msg.name = name;
 		msg.value = value;
-		value_queue.@lock();
 		value_queue.push(msg);
-		value_queue.unlock();
 	}
 	
 	public void json_msg(string data) {
