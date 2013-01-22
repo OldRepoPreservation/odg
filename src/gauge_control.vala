@@ -35,9 +35,12 @@ public class GaugeControl: GLib.Object {
 	construct {
 
 		gauge_msgs = new HashTable<string,List<ControlIF>>(str_hash, str_equal);
-		gauge_alarms = new HashTable<string,List<ControlIF>>(str_hash, str_equal);
+		gauge_alarms = new HashTable<string,List<ControlIF>>(str_hash,
+															 str_equal);
 		value_queue = new AsyncQueue<Msg>();
 		alarm_queue = new AsyncQueue<Msg>();
+		
+		msg_sources = new HashTable<string,MessageSourceIF>(str_hash,str_equal);
 	}
 	
     private AsyncQueue<Msg> value_queue;
@@ -46,8 +49,10 @@ public class GaugeControl: GLib.Object {
 	private static GaugeControl instance;
 	private GaugeControl() {}
 	
-	private static HashTable<string,List<ControlIF>> gauge_msgs;
-	private static HashTable<string,List<ControlIF>> gauge_alarms;
+	private HashTable<string,List<ControlIF>> gauge_msgs;
+	private HashTable<string,List<ControlIF>> gauge_alarms;
+	
+	private HashTable<string,MessageSourceIF> msg_sources;
 
 	public static GaugeControl get_instance() {
 
@@ -103,7 +108,7 @@ public class GaugeControl: GLib.Object {
 
 	// method to check message queues
     // should be called for example from main loop (idle.add)
-	// or from a thread
+	// or from a separate thread
 	public void check_for_msg() {
 		
 		AlarmMsg a = alarm_queue.try_pop() as AlarmMsg;
@@ -133,6 +138,18 @@ public class GaugeControl: GLib.Object {
 		}
 	}
 
+	// add a source that provides values for gauges
+    // and also raises alarms
+	// factory is used to create an instance of source
+	// and it is then initalized and start method is finally called
+	public void add_source(MessageSourceFactory factory, string source_name) {
+
+		MessageSourceIF ms = factory.create();
+		msg_sources.insert(source_name, ms);
+		ms.initialize();
+		ms.start();
+	}
+	
 
 	// gauge value source and alarm source related methods begin.
 	// executed in callers context
@@ -165,6 +182,12 @@ public class GaugeControl: GLib.Object {
 		value_queue.push(msg);
 	}
 	
+	// message source uses this to send values and alarms
+	// data is a json struct 
+	// Alarm
+	// { "type": "alarm", "name": "<alarm name>", "valid": <true|false> }
+	// Value
+    // { "type": "alarm", "name": "<value name>", "value": <double value> }
 	public void json_msg(string data) {
 
 		stdout.printf("GaugeControl.json_msg\n");

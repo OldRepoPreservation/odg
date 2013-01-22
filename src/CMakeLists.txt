@@ -5,6 +5,7 @@ include("${VALA_USE_FILE}")
 vala_add_library(odg SHARED
                  alarm.vala control_if.vala gauge.vala
                  gauge_control.vala gauge_factory.vala resources.vala
+                 message_source.vala
                  round_meter.vala
                  LIBRARY odg
                  GENERATE_VAPI odg.vapi
