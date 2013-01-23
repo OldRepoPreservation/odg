@@ -19,6 +19,7 @@
 using Json;
 
 class Msg {
+	public string type;
 	public string name;
 }
 
@@ -30,29 +31,43 @@ class AlarmMsg: Msg {
 	public bool valid;
 }
 
+class GaugeList {
+	public unowned List<ControlIF> list { get; private set; }
+	public GaugeList() {
+		list = new List<ControlIF>();
+	}
+}
+
 public class GaugeControl: GLib.Object {
 	
-	construct {
+    private AsyncQueue<Msg> msg_queue;
 
-		gauge_msgs = new HashTable<string,List<ControlIF>>(str_hash, str_equal);
-		gauge_alarms = new HashTable<string,List<ControlIF>>(str_hash,
-															 str_equal);
-		value_queue = new AsyncQueue<Msg>();
-		alarm_queue = new AsyncQueue<Msg>();
-		
-		msg_sources = new HashTable<string,MessageSourceIF>(str_hash,str_equal);
-	}
-	
-    private AsyncQueue<Msg> value_queue;
-	private AsyncQueue<Msg> alarm_queue;
-
+	public static bool use_thread { get; set; default=false; }
 	private static GaugeControl instance;
 	private GaugeControl() {}
 	
-	private HashTable<string,List<ControlIF>> gauge_msgs;
-	private HashTable<string,List<ControlIF>> gauge_alarms;
+	private HashTable<string,GaugeList> gauge_msgs;
+	private HashTable<string,GaugeList> gauge_alarms;
 	
 	private HashTable<string,MessageSourceIF> msg_sources;
+
+	private Thread<void*> thread;
+
+	construct {
+		
+		gauge_msgs = new HashTable<string,GaugeList>(str_hash, str_equal);
+		gauge_alarms = new HashTable<string,GaugeList>(str_hash,
+													   str_equal);
+		msg_queue = new AsyncQueue<Msg>();
+		
+		msg_sources = new HashTable<string,MessageSourceIF>(str_hash,
+															str_equal);
+		if(use_thread) {
+			thread = new Thread<void*> ("GaugeControl",
+										this.check_for_msg_thread);
+			stdout.printf("GaugeControl: started thread for message queues\n");
+		}
+	}
 
 	public static GaugeControl get_instance() {
 
@@ -68,74 +83,126 @@ public class GaugeControl: GLib.Object {
 		stdout.printf("GaugeControl.send: name=%s ; value=%f\n", name, value);
 	}
 	
-	public void listen_value(Gauge g, string value_name) {
+	public void listen_value(ControlIF g, string value_name) {
 		
-		unowned List<ControlIF> l = gauge_msgs.get(value_name);
+		GaugeList l = gauge_msgs.lookup(value_name);
 		if(l == null) {
-			gauge_msgs.insert(value_name, new List<ControlIF>());
+			gauge_msgs.insert(value_name, new GaugeList());
 		}
-		l = gauge_msgs.get(value_name);
-		l.append(g);
+		l = gauge_msgs.lookup(value_name);
+		l.list.append(g);
 	}
 	
-	public void forget_value(Gauge g, string value_name) {
+	public void forget_value(ControlIF g, string value_name) {
 		
-		unowned List<ControlIF> l = gauge_msgs.get(value_name);
+		GaugeList l = gauge_msgs.lookup(value_name);
 		if(l == null) {
 			return;
 		}
-		l.remove(g);
+		l.list.remove(g);
 	}
 
-	private void listen_alarm(Gauge g, string alarm_name) {
+	private void listen_alarm(ControlIF g, string alarm_name) {
 		
-		unowned List<ControlIF> l = gauge_alarms.get(alarm_name);
+		GaugeList l = gauge_alarms.lookup(alarm_name);
 		if(l == null) {
-			gauge_alarms.insert(alarm_name, new List<ControlIF>());
+			gauge_alarms.insert(alarm_name, new GaugeList());
 		}
-		l = gauge_alarms.get(alarm_name);
-		l.append(g);
+		l = gauge_alarms.lookup(alarm_name);
+		l.list.append(g);
 	}
 	
-	private void forget_alarm(Gauge g, string alarm_name) {
+	private void forget_alarm(ControlIF g, string alarm_name) {
 		
-		unowned List<ControlIF> l = gauge_alarms.get(alarm_name);
+		GaugeList l = gauge_alarms.lookup(alarm_name);
 		if(l == null) {
 			return;
 		}
-		l.remove(g);
+		l.list.remove(g);
 	}
+
+	public void *check_for_msg_thread() {
+
+		while(true) {
+
+			Msg m = msg_queue.pop();
+			
+			if(m.type == "alarm") {
+				
+				GaugeList l = gauge_alarms.lookup(m.name);
+				if(l != null) {
+					foreach(ControlIF cif in l.list) {
+						cif.alarm.is_valid = (m as AlarmMsg).valid;
+					}	
+					continue;
+				} else {
+					stderr.printf("check_for_msg_thread: unknown alarm '%s'\n", 
+								  m.name);
+					continue;
+				}
+			}
+			
+			if(m.type == "value") {
+				
+				GaugeList l = gauge_msgs.lookup(m.name);
+				if(l != null) {
+					foreach(ControlIF cif in l.list) {
+						cif.current_value = (m as ValueMsg).value;
+					}
+				} else {
+					stderr.printf("check_for_msg_thread: unknown value '%s'\n",
+								  m.name);
+				}
+			}
+		}
+		
+		return null;
+	}
+	
 
 	// method to check message queues
     // should be called for example from main loop (idle.add)
 	// or from a separate thread
-	public void check_for_msg() {
+	public bool check_for_msg() {
 		
-		AlarmMsg a = alarm_queue.try_pop() as AlarmMsg;
-		if(a != null) {
-			unowned List<ControlIF> l = gauge_alarms.get(a.name);
+		if(use_thread) {
+			stderr.printf("check_for_msg: thread is used for message queues\n");
+			return true;
+		}
+
+		Msg m = msg_queue.try_pop();
+		if(m == null) {
+			return true;
+		}
+		
+		if(m.type == "alarm") {
+			
+			GaugeList l = gauge_alarms.lookup(m.name);
 			if(l != null) {
-				foreach(ControlIF cif in l) {
-					cif.alarm.is_valid = a.valid;
+				foreach(ControlIF cif in l.list) {
+					cif.alarm.is_valid = (m as AlarmMsg).valid;
 				}	
-				return;
+				return true;
 			} else {
-				stderr.printf("check_for_msg: unknown alarm %s\n", a.name);
-				return;
+				stderr.printf("check_for_msg: unknown alarm '%s'\n", 
+							  m.name);
+				return true;
 			}
 		}
 		
-		ValueMsg v = value_queue.try_pop() as ValueMsg;
-		if(v != null) {
-			unowned List<ControlIF> l = gauge_msgs.get(v.name);
+		if(m.type == "value") {
+
+			GaugeList l = gauge_msgs.lookup(m.name);
 			if(l != null) {
-				foreach(ControlIF cif in l) {
-					cif.current_value = v.value;
+				foreach(ControlIF cif in l.list) {
+					cif.current_value = (m as ValueMsg).value;
 				}
 			} else {
-				stderr.printf("check_for_msg: unknown value %s\n", v.name);
+				stderr.printf("check_for_msg: unknown value '%s'\n", m.name);
 			}
 		}
+		
+		return true;
 	}
 
 	// add a source that provides values for gauges
@@ -158,53 +225,58 @@ public class GaugeControl: GLib.Object {
 		
 		stdout.printf("GaugeControl.raise_alarm: name=%s\n", name);
 		AlarmMsg msg = new AlarmMsg();
+		msg.type = "alarm";
 		msg.name = name;
 		msg.valid = true;
-		alarm_queue.push(msg);
+		msg_queue.push(msg as Msg);
 	}
 	
 	private void clear_alarm(string name) {
 
 		stdout.printf("GaugeControl.clear_alarm: name=%s\n", name);
 		AlarmMsg msg = new AlarmMsg();
+		msg.type = "alarm";
 		msg.name = name;
 		msg.valid = false;
-		alarm_queue.push(msg);
+		msg_queue.push(msg as Msg);
 	}
 
 	private void set_value(string name, double value) {
 		
-		stdout.printf("GaugeControl.set_value: name=%s, value=%f\n",
-					  name, value);
 		ValueMsg msg = new ValueMsg();
+		msg.type = "value";
 		msg.name = name;
 		msg.value = value;
-		value_queue.push(msg);
+		msg_queue.push(msg as Msg);
 	}
 	
 	// message source uses this to send values and alarms
 	// data is a json struct 
 	// Alarm
-	// { "type": "alarm", "name": "<alarm name>", "valid": <true|false> }
+	// {"msg": {"alarm": { "name": "<alarm name>", "valid": <true|false> }}}
 	// Value
-    // { "type": "alarm", "name": "<value name>", "value": <double value> }
+    // {"msg": {"value": { "name": "<value name>", "value": <double value>}}}
 	public void json_msg(string data) {
 
-		stdout.printf("GaugeControl.json_msg\n");
+//		stdout.printf("GaugeControl.json_msg: %s\n", data);
 		
 		try {
 			var parser = new Parser();
-			parser.load_from_data(data, -1);			
+			parser.load_from_data(data, -1);
 			var root_node = parser.get_root();
-			var reader = new Reader(root_node);
-			reader.read_member("type");
-			string type = reader.get_string_value();
-			reader.read_member("name");
-			string name = reader.get_string_value();
+			if(root_node.get_node_type() != Json.NodeType.OBJECT) {
+				stderr.printf("Invalid JSON message ->\n");
+				stderr.printf("%s\n", data);
+				return;
+			}
+
+			var root_obj = root_node.get_object();
+			var type = root_obj.get_string_member("type");
+			var data_obj = root_obj.get_object_member("data");
+			var name = data_obj.get_string_member("name");
 			if(type == "alarm") {
 				
-				reader.read_member("valid");
-				var valid = reader.get_boolean_value();
+				var valid = data_obj.get_boolean_member("valid");
 				if(valid) {
 					stdout.printf("GaugeControl.json_msg: ALARM %s\n", name);
 					raise_alarm(name);
@@ -214,11 +286,10 @@ public class GaugeControl: GLib.Object {
 					clear_alarm(name);
 				}
 				
-			} else { // type is value
-
-				reader.read_member("value");
-				var value = reader.get_double_value();
-				stdout.printf("GaugeControl.json_msg: name: %s, value:%f\n",
+			} else if(type == "value") {
+				
+				var value = data_obj.get_double_member("value");
+				stdout.printf("GaugeControl.json_msg: name:%s, value:%f\n",
 							  name, value);
 				set_value(name, value);
 			}

@@ -9,6 +9,7 @@ vala_add_library(odg SHARED
                  round_meter.vala
                  LIBRARY odg
                  GENERATE_VAPI odg.vapi
+                 COMPILE_FLAGS --target-glib=2.34
                  GENERATE_HEADER odg.h
                  PACKAGES gtk+-3.0 gio-2.0 json-glib-1.0
                  OUTPUT_DIR gen

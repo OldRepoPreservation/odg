@@ -17,7 +17,7 @@
 
 
 // custom message source class must implement this interface
-public interface MessageSourceIF: Object {
+public interface MessageSourceIF: GLib.Object {
 	
     // start() method must start a separate thread or use some another
     // asynchronous scheme

@@ -6,5 +6,14 @@ vala_add_executable(demo1 demo1.vala
                       OUTPUT_DIR gen
                       CUSTOM_VAPIS ${PROJECT_SOURCE_DIR}/src/gen/odg.vapi
                       VAPI_DIRS ${PROJECT_SOURCE_DIR}/src/gen
+                      COMPILE_FLAGS --target-glib=2.34
+                      LINK_PATH ${PROJECT_SOURCE_DIR}/src
+                      LINK_WITH odg)
+vala_add_executable(demo2 demo2.vala
+                      PACKAGES gtk+-3.0
+                      OUTPUT_DIR gen
+                      CUSTOM_VAPIS ${PROJECT_SOURCE_DIR}/src/gen/odg.vapi
+                      VAPI_DIRS ${PROJECT_SOURCE_DIR}/src/gen
+                      COMPILE_FLAGS --target-glib=2.34
                       LINK_PATH ${PROJECT_SOURCE_DIR}/src
                       LINK_WITH odg)

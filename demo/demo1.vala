@@ -24,7 +24,7 @@ int main (string[] args) {
 
 	var wnd = new Window();
 	wnd.set_size_request (200, 200);
-	wnd.title = "Gauge test";
+	wnd.title = "Gauge test1";
 	wnd.destroy.connect (Gtk.main_quit);
 	
 	Gtk.Grid grid = new Gtk.Grid();

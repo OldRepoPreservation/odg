@@ -2,7 +2,7 @@ CMakeCache.txt
 CMakeFiles/
 Makefile
 cmake_install.cmake
-demo/demo1
+demo/demo[1-9]
 gen/
 *.so
 *~
