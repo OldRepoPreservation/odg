@@ -289,8 +289,8 @@ public class GaugeControl: GLib.Object {
 			} else if(type == "value") {
 				
 				var value = data_obj.get_double_member("value");
-				stdout.printf("GaugeControl.json_msg: name:%s, value:%f\n",
-							  name, value);
+//				stdout.printf("GaugeControl.json_msg: name:%s, value:%f\n",
+//							  name, value);
 				set_value(name, value);
 			}
 			

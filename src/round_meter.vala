@@ -27,8 +27,6 @@ public class RoundMeter: Gauge {
 
 	private Surface bg_layer;
 	private Surface hand_layer;
-	private Context bg_ctx;
-	private Context hand_ctx;
 
 	public uint range { get; set; default = 10; }
 	public uint sub_range { get; set; default = 9; }
@@ -49,9 +47,9 @@ public class RoundMeter: Gauge {
 					   uint low_range_hl=20, uint mid_range_hl=50,
 					   uint high_range_hl=20, string label_text="km/h") {
 
+		this.is_valid = false;
 		this.old_value = 0.0;
 		this.range = num_dots;
-		this.is_valid = false;
 		this.mark_x = new double[this.range];
 		this.mark_y = new double[this.range];		
 		this.sub_mark_x = new double[this.range*this.sub_range];
@@ -67,13 +65,14 @@ public class RoundMeter: Gauge {
 		set_visual(get_screen().get_rgba_visual());
 
 		draw.connect(on_draw);
+		size_allocate.connect(on_size_allocate);
 
-		this.expand = true;
-
-		radius = get_allocated_width()/2;
+		this.app_paintable = true;
+        this.double_buffered = false;
 		
-		app_paintable = false;
-		double_buffered = false;
+		this.expand = true;
+		
+		current_value_changed.connect(receive_current_value_changed);
 
 		set_has_window(false);
 	}
@@ -133,7 +132,7 @@ public class RoundMeter: Gauge {
 
 	private void draw_bg() {
 		
-		var ctx = bg_ctx;
+		var ctx = new Context(bg_layer);
 
 // This makes the current color transparent (a = 0.0)
 		ctx.set_source_rgba(1.0,1.0,1.0,0.0);
@@ -142,7 +141,7 @@ public class RoundMeter: Gauge {
 		ctx.set_operator(Cairo.Operator.SOURCE);
 		ctx.paint();
 		
-// Set the gradient as our source and paint a circle.
+// Set the gradient as source and paint a circle.
 		ctx.set_source(grad);
 		ctx.arc(radius, radius, radius, 0, 2.0*3.14);
 		ctx.fill();
@@ -177,16 +176,11 @@ public class RoundMeter: Gauge {
 
 /* Actual method for widget to draw it self */
 	private bool on_draw(Context ctx) {
-
-		// initialize when widget has already been realized
+		
+//		stdout.printf("on_draw()\n");
+		
 		if(!is_valid) {
-			
-			create_gradient();
-			calc_marks();
-			calc_sub_marks();
-			create_bg_layer();
-			create_hand_layer(); 
-			is_valid = true;
+			return false;
 		}
 
 		// create background only on demand
@@ -197,18 +191,13 @@ public class RoundMeter: Gauge {
 		ctx.set_source_surface(bg_layer, 0 ,0);
 		ctx.set_operator(Cairo.Operator.SOURCE);
 		ctx.paint();
-		
-		// create/update hand
-		if((current_value >= 0) || (current_value <= range*sub_range)) {	
-			draw_hand();
-		}
+
 		// and paint it on top of background from hand layer surface
 		ctx.set_source_surface(hand_layer, 0 ,0);
 		ctx.set_operator(Cairo.Operator.ATOP);
 		ctx.paint_with_alpha(0.7);
 
 		redraw_all = true;
-//		stdout.printf("draw_hand()\n");
 		return true;
 	}
 
@@ -220,8 +209,8 @@ public class RoundMeter: Gauge {
 			var region = my_wnd.get_clip_region();
 			var rect = region.get_extents();
 			bg_layer = my_wnd.create_similar_surface(Content.COLOR_ALPHA,
-													   rect.width, rect.height);
-			bg_ctx = new Context(bg_layer);
+													 rect.width, rect.height);
+			var bg_ctx = new Context(bg_layer);
 			bg_ctx.set_source_rgba(1.0,1.0,1.0,0.0);
 			bg_ctx.set_operator(Cairo.Operator.SOURCE);
 			bg_ctx.paint();
@@ -237,7 +226,7 @@ public class RoundMeter: Gauge {
 			var rect = region.get_extents();
 			hand_layer = my_wnd.create_similar_surface(Content.COLOR_ALPHA,
 													   rect.width, rect.height);
-			hand_ctx = new Context(hand_layer);
+			var hand_ctx = new Context(hand_layer);
 			hand_ctx.set_source_rgba(1.0,1.0,1.0,0.0);
 			hand_ctx.set_operator(Cairo.Operator.SOURCE);
 			hand_ctx.paint();
@@ -247,6 +236,7 @@ public class RoundMeter: Gauge {
 	private void draw_range_highlight(Context ctx) {
 
 		ctx.save();
+
 		ctx.set_line_width(radius / 30);
 		ctx.translate(radius, radius);
 		double shift_angle = 2.0 * Math.PI * 0.375;
@@ -313,7 +303,7 @@ public class RoundMeter: Gauge {
 
 	private void draw_hand() {
 		
-		var ctx = hand_ctx;
+		var ctx = new Context(hand_layer);
 
 		double shift_angle = 2.0 * Math.PI * 0.375;
 		double max = (double)(this.range*this.sub_range);
@@ -349,6 +339,7 @@ public class RoundMeter: Gauge {
 		ctx.set_source_rgba(0, 0, 0, 1.0);
 		ctx.rel_line_to(new_x, new_y);
 		ctx.stroke();
+//		stdout.printf("draw_hand()\n");
 	}
 
 	private double c(int val) {
@@ -356,10 +347,13 @@ public class RoundMeter: Gauge {
 		return val / 255.0;
 	}
 
-	public override void size_allocate (Allocation allocation) {
-		
-// The base method will save the allocation and resize the
-// widget's GDK window if the widget is already realized.
+	private void on_size_allocate(Allocation allocation) {		
+/*
+ * This method gets called by Gtk+ when the actual size is known
+ * and the widget is told how much space could actually be allocated.
+ * It is called every time the widget size changes, for example when the
+ * user resizes the window.
+ */
 		base.size_allocate (allocation);
 		radius = allocation.width / 2;
 		calc_marks();
@@ -367,6 +361,9 @@ public class RoundMeter: Gauge {
 		create_gradient();
 		create_bg_layer();
 		create_hand_layer();
+		draw_bg();
+		draw_hand();
+		is_valid = true;
 	}
 
 	public override void get_preferred_height_for_width(int width,
@@ -378,8 +375,25 @@ public class RoundMeter: Gauge {
 	}
 
 	protected override void on_label_changed() {
-		stdout.printf("on_label_changed(): label = %s\n", label);
-		queue_draw();
+//		stdout.printf("on_label_changed(): label = %s\n", label);
+		if(is_valid) {
+			Idle.add(() => {
+					queue_draw();
+					return false;
+				});
+		}
+	}
+
+	private void receive_current_value_changed() {
+		
+		if(is_valid) {
+			Idle.add(() => {
+					draw_hand();
+					queue_draw();
+					redraw_all = false;
+					return false;
+				});
+		}
 	}
 
 	protected override void on_current_value_changed() {
@@ -390,10 +404,12 @@ public class RoundMeter: Gauge {
 		if(current_value > range*sub_range) {
 			return;
 		}
-		redraw_all = false;
-		queue_draw();
-		stdout.printf("on_current_value_changed(): current_value = %f\n", 
-					  current_value);
+		
+		current_value_changed();
+
+//		stdout.printf("on_current_value_changed(): current_value = %f\n", 
+//					  current_value);
 	}
+
 }
 

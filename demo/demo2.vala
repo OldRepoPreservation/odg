@@ -53,7 +53,7 @@ class SimulatorThread {
 
 	private void send(double value) {
 
-		stdout.printf("%f\n", value);
+//		stdout.printf("%f\n", value);
 		ctrl.json_msg(@"{\"type\":\"value\",\"data\":{\"name\":\"test\",\"value\":$value}}");
 	}
 	
@@ -116,19 +116,20 @@ int main (string[] args) {
 	g.mid_range_highlight = 60;
 	g.high_range_highlight = 20;
 	g.label = "RPM";
-	grid.attach(g, 1, 0, 1, 1);
+	grid.attach(g, 0, 0, 1, 1);
 	
+	wnd.show_all();
 	wnd.resize(240, 240);
-	wnd.show_all ();
 	gif.current_value = 0.0;
 
-	// GaugeControl.use_thread = false;
+	// start thread for reading message queue in GaugeControl
+//	GaugeControl.use_thread = false;
 	GaugeControl.use_thread = true;
 	// add source to GaugeControl
 	GaugeControl gctrl = GaugeControl.get_instance();
 	MyMessageSourceFactory f = new MyMessageSourceFactory();
 	gctrl.add_source(f, "test_source");
-	
+
 	// add gauge to GaugeControl with and receive values named 'test'
 	gctrl.listen_value(gif, "test");
 	

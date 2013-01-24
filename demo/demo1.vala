@@ -48,8 +48,9 @@ int main (string[] args) {
 	g2.label = "RPM";
 	grid.attach(g2, 1, 0, 1, 1);
 	
+	wnd.show_all ();	
 	wnd.resize(480, 240);
-	wnd.show_all ();
+
 	gif1.current_value = 0.0;
 	gif2.current_value = 0.0;
 	Timeout.add(50, 

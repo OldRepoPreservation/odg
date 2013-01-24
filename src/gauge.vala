@@ -27,6 +27,10 @@ public class Gauge: Widget, ControlIF {
 	public double current_value { get; set; default=0.0; }
 	public string label { get; set; default="Label"; }
 	public Alarm alarm { get; set; }
+	
+	protected signal void current_value_changed();
+	protected signal void alarm_changed();
+	protected signal void label_changed();
 
 	private void on_property_changed(Object o, ParamSpec p) {
 
@@ -44,15 +48,18 @@ public class Gauge: Widget, ControlIF {
 	}
 	
 	protected virtual void on_label_changed() {
+		label_changed();
 		stdout.printf("**UNIMPLEMENTED** Set label: %s\n", label);
 	}
 
 	protected virtual void on_current_value_changed() {
+		current_value_changed();
 		stdout.printf("**UNIMPLEMENTED** Current value changed: %f\n",
 					  current_value);
 	}
 
 	protected virtual void on_alarm_changed() {
+		alarm_changed();
 		stdout.printf("**UNIMPLEMENTED** Alarm changed: %s\n", alarm.name);
 	}
 }
