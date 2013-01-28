@@ -115,7 +115,9 @@ int main (string[] args) {
 	g.low_range_highlight = 10;
 	g.mid_range_highlight = 60;
 	g.high_range_highlight = 20;
-	g.label = "RPM";
+	g.label = "Rpm x 1000";
+	g.mark_labels = {"0", "1", "2", "3", "4", "5",
+					 "6", "7", "8", "9" };
 	grid.attach(g, 0, 0, 1, 1);
 	
 	wnd.show_all();

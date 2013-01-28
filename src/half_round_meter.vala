@@ -23,6 +23,8 @@ using Cairo;
 
 public class HalfRoundMeter: RoundMeter {
 
+	public bool bottom_align {get; set; default=false; }
+	
 	public HalfRoundMeter(uint num_dots=5, uint num_sub_dots=6) {
 		
 		base(num_dots, num_sub_dots);
@@ -39,20 +41,24 @@ public class HalfRoundMeter: RoundMeter {
 		natural_height = (int)(width*0.55);
 	}
 	
-	protected override void draw_bg(Context ctx) {
+	protected override void draw_bg_pre(Context ctx) {
 	   
-		ctx.translate(0, radius);
+		if(bottom_align) {
+			ctx.translate(0, radius);
+		}
 		ctx.rectangle(0, 0, radius*2, radius*1.1);
 		ctx.clip();
-		base.draw_bg(ctx);
 	}
-
-	protected override void draw_hand(Context ctx) {
-
-		ctx.translate(0, radius);
-		ctx.rectangle(0, 0, radius*2, radius*1.1);
-		ctx.clip();
-		base.draw_hand(ctx);
+	
+	protected override void draw_hand_pre(Context ctx) {
+		
+		if(bottom_align) {
+			ctx.translate(0, radius);
+		}
+	}
+	protected override int get_label_ypos() {
+		
+		return ((int)(radius));
 	}
 }
 

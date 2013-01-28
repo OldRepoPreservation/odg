@@ -113,13 +113,17 @@ int main (string[] args) {
 	var g1 = gif1 as RoundMeter;
 	var gif2 = GaugeFactory.get_instance().new_gauge("round_meter");
 	var g2 = gif2 as RoundMeter;
+	var gif3 = GaugeFactory.get_instance().new_gauge("half_round_meter");
+	var g3 = gif3 as HalfRoundMeter;
 	
 	g0.range = 5;
 	g0.sub_range = 4;
 	g0.low_range_highlight = 5;
 	g0.mid_range_highlight = 13;
 	g0.high_range_highlight = 2;
+	g0.mark_labels = {"Empty", "1/4", "1/2", "3/4", "Full" };
 	g0.label = "Fuel";
+	g0.bottom_align = true;
 	grid.attach(g0, 0, 0, 1, 1);
 
 	g1.range = 8;
@@ -128,6 +132,8 @@ int main (string[] args) {
 	g1.mid_range_highlight = 47;
 	g1.high_range_highlight = 15;
 	g1.label = "RPM";
+	g1.mark_labels = {"0", "1000", "2000", "3000",
+					  "4000", "5000", "6000", "7000" };
 	grid.attach(g1, 1, 0, 1, 1);
 	
 	g2.range = 10;
@@ -136,15 +142,29 @@ int main (string[] args) {
 	g2.mid_range_highlight = 0;
 	g2.high_range_highlight = 0;
 	g2.label = "Km/h";
+	g2.mark_labels = {"", "20", "40", "60", "80", "100",
+					  "120", "140", "160", "180" };
 	grid.attach(g2, 2, 0, 1, 1);
 
-	wnd.resize(700, 240);
+	g3.range = 5;
+	g3.sub_range = 4;
+	g3.low_range_highlight = 10;
+	g3.mid_range_highlight = 5;
+	g3.high_range_highlight = 5;
+	g3.mark_labels = {"0", "30", "60", "90", "120" };
+	g3.label = "Temp";
+	g3.bottom_align = true;
+	grid.attach(g3, 3, 0, 1, 1);
+
+	wnd.resize(940, 250);
 	// show all widgets.
 	// currently this needs to be after all the widgets have been
 	// created because gauges will receive their size when shown
 	wnd.show_all();
 
-	g0.current_value = 13.4;
+	g0.current_value = 6.4;
+	g2.current_value = 33.0;
+	g3.current_value = 14.0;
 
 	// start thread for reading message queue in GaugeControl
 //	GaugeControl.use_thread = false;

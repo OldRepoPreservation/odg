@@ -36,6 +36,7 @@ public class RoundMeterConfig {
 	public double *range_shift_angle_coeff { get; private set; default=null; }
 	public double *range_scale { get; private set; default=null; }
 	public string label { get; private set; default=null; }
+	public string[] mark_labels { get; set; default = null; }
 	
 	public RoundMeterConfig.with_label(string l) {
 		label = l;
@@ -86,6 +87,9 @@ void round_meter_set_config_default(RoundMeter m, RoundMeterConfig c) {
 	if(c.label != null) {
 		m.label = c.label;
 	}
+	if(c.mark_labels != null) {
+		m.mark_labels = c.mark_labels;
+	}
 	if(c.low_range_highlight != null) {
 		m.low_range_highlight = *(c.low_range_highlight);
 	}
@@ -125,13 +129,15 @@ public class RoundMeter: Gauge {
 	private double[] sub_mark_x;
 	private double[] sub_mark_y;
 
+	public string[] mark_labels { get; set; default = null; }
 	public uint range { get; set; default = 10; }
 	public uint sub_range { get; set; default = 9; }
 	public uint low_range_highlight { get; set; default = 20;}
 	public uint mid_range_highlight { get; set; default = 50;}
 	public uint high_range_highlight { get; set; default = 20;}
 
-// these 3 properties are meant to be used internally
+// these 3 properties are really meant to be used internally
+// but can be also set if so desired
 	public double hand_line_width_base { get; set; default = 0.05; }
 	public double range_shift_angle_coeff { get; set; default = 0.375; }
 	public double range_scale { get; set; default = 0.75; }
@@ -254,7 +260,6 @@ public class RoundMeter: Gauge {
 		redraw_all = true;
 		return true;
 	}
-
 	protected virtual void create_bg_layer() {
 		
 		var my_wnd = get_window();
@@ -363,13 +368,78 @@ public class RoundMeter: Gauge {
 		}
 		ctx.restore();
 	}
+	
+	protected virtual void draw_mark_labels(Context ctx) {
 
+		int i = 0;
+		double w;
+		double h;
+		if(mark_labels != null) {
+
+			ctx.set_font_size(radius/8.0);
+			ctx.select_font_face("Sans", FontSlant.NORMAL, FontWeight.NORMAL);
+			TextExtents te;
+			
+			foreach(string ml in mark_labels) {
+
+				if(i >=  mark_x.length) {
+					break;
+				}
+				double x = mark_x[i];
+				double y = mark_y[i];
+				ctx.save();
+				ctx.scale(0.75, 0.75);
+				ctx.translate(radius*0.35, radius*0.35);
+				ctx.text_extents(ml, out te);
+				w = te.width;
+				h = te.height;
+				ctx.translate(-(w/2), 0);
+				ctx.set_source_rgba (1.0, 1.0, 1.0, 0.5);
+				ctx.move_to(x, y);
+				ctx.show_text(ml);
+				ctx.stroke();
+				ctx.restore();
+				i++;
+			}
+		}
+	}
+
+	protected virtual void draw_label(Context ctx, int yoff) {
+
+// Draw the label in the middle of the bottom area
+		
+		double w;
+		double h;
+
+// Pango could be also used but it did not display all characters ???
+		ctx.set_font_size(radius/7.0);
+		ctx.select_font_face("Sans", FontSlant.NORMAL, FontWeight.BOLD);
+		TextExtents te;
+		ctx.text_extents(label, out te);
+		w = te.width;
+		h = te.height;
+		var xoff = (int)radius - w/2;
+		ctx.set_source_rgba(0.5, 0.5, 0.5, 0.5);
+		ctx.move_to(xoff, yoff - h*2);
+		ctx.show_text(label);
+		ctx.stroke();
+	}
+
+	protected virtual int get_label_ypos() {
+		return ((int)(radius*2));
+	}
+
+	protected virtual void draw_bg_pre(Context ctx) {}
+	protected virtual void draw_bg_post(Context ctx) {}
+	protected virtual void draw_hand_pre(Context ctx) {}
+	protected virtual void draw_hand_post(Context ctx) {}
+	
 	protected virtual void draw_bg(Context ctx) {
 
-// This makes the current color transparent (a = 0.0)
+		draw_bg_pre(ctx);
+
 		ctx.set_source_rgba(1.0, 1.0, 1.0, 0.0);
-		
-// Paint the entire window transparent to start with.
+// Paint the entire window transparent
 		ctx.set_operator(Cairo.Operator.SOURCE);
 		ctx.paint();
 		
@@ -378,35 +448,28 @@ public class RoundMeter: Gauge {
 		ctx.arc(radius, radius, radius, 0, 2.0*3.14);
 		ctx.fill();
 		ctx.stroke();
+
+		draw_label(ctx, get_label_ypos());
 		
 		draw_range_highlight(ctx);
 		draw_sub_marks(ctx);
 		draw_marks(ctx);
+		draw_mark_labels(ctx);
 		
 // Draw the center dot
 		ctx.set_source_rgba(c(124), c(32), c(113), 0.7);
 		ctx.arc(radius, radius, 0.1 * radius, 0, 2.0*3.14);
 		ctx.fill();
 		ctx.stroke();
-		
-// Draw the label in the middle of the bottom area
-		var font_desc = new Pango.FontDescription();
-		font_desc.set_family("Sans");
-		font_desc.set_weight(Pango.Weight.BOLD);
-		var text_layout = create_pango_layout(label);
-		font_desc.set_size((int)(radius/10 * Pango.SCALE));
-		text_layout.set_font_description(font_desc);
-		Pango.cairo_update_layout(ctx, text_layout);
-		int w, h;
-		text_layout.get_pixel_size(out w, out h);
-		var xoff = (int)radius - w/2;
-		ctx.set_source_rgba (0.5, 0.5, 0.5, 0.5);
-		ctx.move_to(xoff, radius*2 - h*2);
-		Pango.cairo_show_layout(ctx, text_layout);
+
+		draw_bg_post(ctx);
+
 //		stdout.printf("draw_bg()\n");
 	}
 
 	protected virtual void draw_hand(Context ctx) {
+
+		draw_hand_pre(ctx);
 
 		double shift_angle = 2.0 * Math.PI * range_shift_angle_coeff;
 		double max = (double)(this.range*this.sub_range);
@@ -442,6 +505,8 @@ public class RoundMeter: Gauge {
 		ctx.set_source_rgba(0, 0, 0, 1.0);
 		ctx.rel_line_to(new_x, new_y);
 		ctx.stroke();
+
+		draw_hand_post(ctx);
 //		stdout.printf("draw_hand()\n");
 	}
 
@@ -457,7 +522,6 @@ public class RoundMeter: Gauge {
  * It is called every time the widget size changes, for example when the
  * user resizes the window.
  */
-		base.size_allocate (allocation);
 		radius = allocation.width / 2;
 		calc_marks();
 		calc_sub_marks();
