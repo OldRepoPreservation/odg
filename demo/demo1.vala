@@ -37,6 +37,7 @@ int main (string[] args) {
 	g1.low_range_highlight = 20;
 	g1.mid_range_highlight = 60;
 	g1.high_range_highlight = 10;
+	g1.label = "Km/h";
 	grid.attach(g1, 0, 0, 1, 1);
 	var gif2 = GaugeFactory.get_instance().new_gauge("round_meter");
 	var g2 = gif2 as RoundMeter;

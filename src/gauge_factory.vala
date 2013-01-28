@@ -34,6 +34,9 @@ public class GaugeFactory {
 		if(gauge_type == "round_meter") {
 			return new RoundMeter();
 		}
+		if(gauge_type == "half_round_meter") {
+			return new HalfRoundMeter();
+		}
 
 		return null;
 	}

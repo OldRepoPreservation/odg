@@ -6,7 +6,7 @@ vala_add_library(odg SHARED
                  alarm.vala control_if.vala gauge.vala
                  gauge_control.vala gauge_factory.vala resources.vala
                  message_source.vala
-                 round_meter.vala
+                 round_meter.vala half_round_meter.vala
                  LIBRARY odg
                  GENERATE_VAPI odg.vapi
                  COMPILE_FLAGS --target-glib=2.34
