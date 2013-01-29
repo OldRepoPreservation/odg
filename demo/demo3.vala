@@ -20,14 +20,14 @@ using Gtk;
 
 class SimulatorThread {
 	
-	const double amp = 30.0;
+	const double amp = 35.0;
 	const double A = 0.3;
 	const double B = 0.2;
 	const double C = 0.5;
 	const double a = 2*Math.PI*0.002;
 	const double b = 2*Math.PI*0.005;
 	const double c = 2*Math.PI*0.003;
-	const double offset = 36.0;
+	const double offset = 35.0;
 	uint32 x;
 	GaugeControl ctrl;
 	
@@ -81,7 +81,7 @@ public class Simulator: GLib.Object, MessageSourceIF {
 	}
 	
 	public void start() {
-		thread = new Thread<void*> ("OdgSourceSimulator", st.run);
+		thread = new Thread<void*> ("OdgSourceSimulator2", st.run);
 	}
 	
 	public void initialize() {}
@@ -93,6 +93,89 @@ public class MyMessageSourceFactory: MessageSourceFactory {
 
 	public override MessageSourceIF? create() {
 		return new Simulator() as MessageSourceIF;
+	}
+}
+
+class SimulatorThread2 {
+	
+	const double amp = 10.0;
+	const double A = 0.3;
+	const double B = 0.2;
+	const double C = 0.5;
+	const double a = 2*Math.PI*0.002;
+	const double b = 2*Math.PI*0.005;
+	const double c = 2*Math.PI*0.003;
+	const double offset = 10.0;
+	uint32 x;
+	GaugeControl ctrl;
+	
+	public SimulatorThread2() {
+		
+		x = 0;
+		ctrl = GaugeControl.get_instance();
+	}
+	
+//	private double calc() {
+//		
+//		var result = (A*Math.sin(B*x+C)+D);
+//		stdout.printf("%f\n", result);
+//		return result;
+//	}
+
+	private double calc() {
+		return (amp*(A*Math.sin(a*x) +
+					 B*Math.sin(b*x) +
+					 C*Math.sin(c*x)) + 
+				offset);
+	}
+
+	private void send(double value) {
+
+//		stdout.printf("%f\n", value);
+		ctrl.json_msg(@"{\"type\":\"value\",\"data\":{\"name\":\"test2\",\"value\":$value}}");
+	}
+	private void send2(double value) {
+		ctrl.json_msg(@"{\"type\":\"value\",\"data\":{\"name\":\"test3\",\"value\":$value}}");
+	}
+	
+    public void *run() {
+		
+		double value;
+        while(true) {
+			value = calc();
+			x += 1;
+			send(value);
+			Thread.usleep(50000);
+			send2(value*0.5);
+            Thread.usleep(10*10000);
+        }
+		
+		return null;
+    }
+}
+
+public class Simulator2: GLib.Object, MessageSourceIF {
+	
+	SimulatorThread2 st;
+	Thread<void*> thread;
+	
+	public Simulator2() {
+		st = new SimulatorThread2();
+	}
+	
+	public void start() {
+		thread = new Thread<void*> ("OdgSourceSimulator", st.run);
+	}
+	
+	public void initialize() {}
+	
+	public void clear_alarm() {}
+}
+
+public class MyMessageSourceFactory2: MessageSourceFactory {
+
+	public override MessageSourceIF? create() {
+		return new Simulator2() as MessageSourceIF;
 	}
 }
 
@@ -173,9 +256,14 @@ int main (string[] args) {
 	GaugeControl gctrl = GaugeControl.get_instance();
 	MyMessageSourceFactory f = new MyMessageSourceFactory();
 	gctrl.add_source(f, "test_source");
+	MyMessageSourceFactory2 f2 = new MyMessageSourceFactory2();
+	gctrl.add_source(f2, "test_source2");
 
 	// add gauge to GaugeControl with and receive values named 'test'
+	gctrl.listen_value(gif0, "test2");
 	gctrl.listen_value(gif1, "test");
+	gctrl.listen_value(gif2, "test");
+	gctrl.listen_value(gif3, "test3");
 	
 	// add idle event handler to main loop
 	// checks GaugeControl message queues for new msgs if thread is not used

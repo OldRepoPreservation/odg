@@ -188,9 +188,10 @@ public class RoundMeter: Gauge {
 		grad = new Cairo.Pattern.radial(width, height, 0,
 										width, height, radius);
 
-		grad.add_color_stop_rgba(0.0, c(10), c(10), c(190), 1.0);
-		grad.add_color_stop_rgba(0.8, c(10), c(10), c(190), 0.7);
-		grad.add_color_stop_rgba(1.0, c(10), c(10), c(190), 0.5);
+		grad.add_color_stop_rgba(0.0, c(10), c(10), c(10), 1.0);
+		grad.add_color_stop_rgba(0.2, c(10), c(10), c(190), 0.7);
+		grad.add_color_stop_rgba(0.8, c(10), c(10), c(190), 0.5);
+		grad.add_color_stop_rgba(1.0, c(10), c(10), c(190), 0.2);
 	}
 
 	private void calc_marks() {
@@ -307,7 +308,7 @@ public class RoundMeter: Gauge {
 					  range_scale);
 		if(angle2 != 0) {
 			ctx.set_source_rgba(c(200), c(255), c(0), 0.6);
-			ctx.arc(0, 0, radius*0.95, angle, angle2-0.01);
+			ctx.arc(0, 0, radius*0.9, angle, angle2-0.01);
 			ctx.stroke();
 		}
 
@@ -316,7 +317,7 @@ public class RoundMeter: Gauge {
 				  range_scale);
 		if(angle != 0) {
 			ctx.set_source_rgba(c(0), c(255), c(0), 0.6);
-			ctx.arc(0, 0, radius*0.95, angle, angle+angle2-0.01);
+			ctx.arc(0, 0, radius*0.9, angle, angle+angle2-0.01);
 			ctx.stroke();
 		}
 
@@ -325,14 +326,48 @@ public class RoundMeter: Gauge {
 				  range_scale);
 		if(angle != 0) {
 			ctx.set_source_rgba(c(150), c(50), c(0), 0.6);
-			ctx.arc(0, 0, radius*0.95, angle, angle+angle2);
+			ctx.arc(0, 0, radius*0.9, angle, angle+angle2);
 			ctx.stroke();
 		}
 
 		ctx.restore();
 	}
 
-	private void draw_marks(Context ctx) {
+	protected virtual void draw_marks_bg(Context ctx) {
+	
+		ctx.save();
+
+		var start_mark_y = -((mark_y[0]-radius)/(radius*0.85));
+		var start_mark_x = ((mark_x[0]-radius)/(radius*0.85));
+		var end_mark_y = -((mark_y[range-1]-radius)/(radius*0.85));
+		var end_mark_x = ((mark_x[range-1]-radius)/(radius*0.85));
+		double start_angle;
+		double end_angle;
+		if(start_mark_x > 0) {
+			start_angle = Math.asin(start_mark_y);
+		} else {
+			start_angle = Math.asin(-start_mark_y)+Math.PI;
+		}
+		if(end_mark_x > 0) {
+			end_angle = Math.asin(end_mark_y);
+		} else {
+			end_angle = Math.asin(-end_mark_y)+Math.PI;
+		}
+//		stdout.printf("%f,%f\n", start_angle, end_angle);
+		start_angle = 2*Math.PI-start_angle;
+		end_angle = 2*Math.PI-end_angle;
+		
+		ctx.translate(radius, radius);
+		ctx.set_source_rgba(1.0, 1.0, 1.0, 0.2);
+		ctx.set_operator(Cairo.Operator.OVER);
+		ctx.set_line_width(0.08 * radius);
+		ctx.arc(0, 0, radius*0.81, start_angle, end_angle);
+		ctx.stroke();
+
+		ctx.restore();
+	}
+	
+	protected virtual void draw_marks(Context ctx) {
 
 		double rad = radius / 30.0;
 		ctx.set_line_width(1);
@@ -348,7 +383,7 @@ public class RoundMeter: Gauge {
 		}
 	}
 
-	private void draw_sub_marks(Context ctx) {
+	protected virtual void draw_sub_marks(Context ctx) {
 
 		ctx.set_line_width(1);
 		ctx.set_source_rgba(0, 0, 0, 1);
@@ -429,7 +464,13 @@ public class RoundMeter: Gauge {
 		return ((int)(radius*2));
 	}
 
-	protected virtual void draw_bg_pre(Context ctx) {}
+	protected virtual void draw_bg_pre(Context ctx) {
+		// Paint the entire window transparent
+		// causes text not to render correctly, characters missing
+		//ctx.set_source_rgba(1.0, 1.0, 1.0, 0.0);
+		//ctx.set_operator(Cairo.Operator.SOURCE);
+		//ctx.paint();
+	}
 	protected virtual void draw_bg_post(Context ctx) {}
 	protected virtual void draw_hand_pre(Context ctx) {}
 	protected virtual void draw_hand_post(Context ctx) {}
@@ -437,11 +478,6 @@ public class RoundMeter: Gauge {
 	protected virtual void draw_bg(Context ctx) {
 
 		draw_bg_pre(ctx);
-
-		ctx.set_source_rgba(1.0, 1.0, 1.0, 0.0);
-// Paint the entire window transparent
-		ctx.set_operator(Cairo.Operator.SOURCE);
-		ctx.paint();
 		
 // Set the gradient as source and paint a circle.
 		ctx.set_source(grad);
@@ -449,13 +485,14 @@ public class RoundMeter: Gauge {
 		ctx.fill();
 		ctx.stroke();
 
-		draw_label(ctx, get_label_ypos());
-		
 		draw_range_highlight(ctx);
+		draw_marks_bg(ctx);
 		draw_sub_marks(ctx);
 		draw_marks(ctx);
+
+		draw_label(ctx, get_label_ypos());
 		draw_mark_labels(ctx);
-		
+
 // Draw the center dot
 		ctx.set_source_rgba(c(124), c(32), c(113), 0.7);
 		ctx.arc(radius, radius, 0.1 * radius, 0, 2.0*3.14);
