@@ -186,8 +186,13 @@ int main (string[] args) {
 	var wnd = new Window();
 	wnd.title = "Gauge test3";
 	wnd.destroy.connect (Gtk.main_quit);
+	Gdk.Color c;
+	Gdk.Color.parse("black", out c);
+	wnd.modify_bg(StateType.NORMAL, c);
 	
 	Gtk.Grid grid = new Gtk.Grid();
+	grid.set_column_homogeneous(true);
+	grid.set_row_homogeneous(true);
 	wnd.add (grid);
 	
 	var gif0 = GaugeFactory.get_instance().new_gauge("half_round_meter");
@@ -206,8 +211,9 @@ int main (string[] args) {
 	g0.high_range_highlight = 2;
 	g0.mark_labels = {"Empty", "1/4", "1/2", "3/4", "Full" };
 	g0.label = "Fuel";
-	g0.bottom_align = true;
-	grid.attach(g0, 0, 0, 1, 1);
+	g0.set_valign(Align.END);
+	g0.margin = 10;
+	grid.attach(g0, 0, 1, 2, 1);
 
 	g1.range = 8;
 	g1.sub_range = 9;
@@ -217,7 +223,7 @@ int main (string[] args) {
 	g1.label = "RPM";
 	g1.mark_labels = {"0", "1000", "2000", "3000",
 					  "4000", "5000", "6000", "7000" };
-	grid.attach(g1, 1, 0, 1, 1);
+	grid.attach(g1, 2, 0, 2, 2);
 	
 	g2.range = 10;
 	g2.sub_range = 9;
@@ -227,7 +233,7 @@ int main (string[] args) {
 	g2.label = "Km/h";
 	g2.mark_labels = {"", "20", "40", "60", "80", "100",
 					  "120", "140", "160", "180" };
-	grid.attach(g2, 2, 0, 1, 1);
+	grid.attach(g2, 4, 0, 2, 2);
 
 	g3.range = 5;
 	g3.sub_range = 4;
@@ -236,21 +242,18 @@ int main (string[] args) {
 	g3.high_range_highlight = 5;
 	g3.mark_labels = {"0", "30", "60", "90", "120" };
 	g3.label = "Temp";
-	g3.bottom_align = true;
-	grid.attach(g3, 3, 0, 1, 1);
+	g3.set_valign(Align.END);
+	g3.margin = 10;
+	grid.attach(g3, 6, 1, 2, 1);
 
-	wnd.resize(940, 250);
+	wnd.resize(940, 270);
 	// show all widgets.
 	// currently this needs to be after all the widgets have been
 	// created because gauges will receive their size when shown
 	wnd.show_all();
 
-	g0.current_value = 6.4;
-	g2.current_value = 33.0;
-	g3.current_value = 14.0;
-
 	// start thread for reading message queue in GaugeControl
-//	GaugeControl.use_thread = false;
+    // GaugeControl.use_thread = false;
 	GaugeControl.use_thread = true;
 	// add source to GaugeControl
 	GaugeControl gctrl = GaugeControl.get_instance();
@@ -259,7 +262,7 @@ int main (string[] args) {
 	MyMessageSourceFactory2 f2 = new MyMessageSourceFactory2();
 	gctrl.add_source(f2, "test_source2");
 
-	// add gauge to GaugeControl with and receive values named 'test'
+	// add gauge to GaugeControl to receive values
 	gctrl.listen_value(gif0, "test2");
 	gctrl.listen_value(gif1, "test");
 	gctrl.listen_value(gif2, "test");

@@ -21,9 +21,12 @@ using Gtk;
 using Cairo;
 
 
+// TODO: draw labels on LEFT,TOP,RIGHT oriented half round meters correctly
+//       should this implement also Gtk.Orientable interface ?
+
 public class HalfRoundMeter: RoundMeter {
 
-	public bool bottom_align {get; set; default=false; }
+	public PositionType position {get; set; default=PositionType.BOTTOM; }
 	
 	public HalfRoundMeter(uint num_dots=5, uint num_sub_dots=6) {
 		
@@ -32,30 +35,126 @@ public class HalfRoundMeter: RoundMeter {
 		range_shift_angle_coeff = 0.5;
 		range_scale = 0.5;
 	}
+	
+	protected override double calc_radius(Allocation allocation) {
+		
+		switch(position) {
+		case PositionType.BOTTOM:
+		case PositionType.TOP:
+			return (allocation.width / 2.1);
+		case PositionType.LEFT:
+		case PositionType.RIGHT:
+			return (allocation.width * 0.9);
+		default:
+			return (allocation.width / 2.1);
+		}
+	}
+	
+	public override SizeRequestMode get_request_mode () {
+		
+		return SizeRequestMode.HEIGHT_FOR_WIDTH;			
+	}
+	
+	public override void get_preferred_width(out int minimum_width,
+											  out int natural_width) {
+		
+		switch(position) {
+		case PositionType.LEFT:
+		case PositionType.RIGHT:
+			minimum_width = 50;
+			natural_width = 120;
+			break;
+		case PositionType.BOTTOM:
+		case PositionType.TOP:
+			minimum_width = 100;
+			natural_width = 240;
+			break;
+		default:
+			natural_width = 100;
+			natural_width = 240;
+			break;
+		}
+	}
 
 	public override void get_preferred_height_for_width(int width,
 														out int minimum_height,
 														out int natural_height){
-		
-		minimum_height = width;
-		natural_height = (int)(width*0.55);
+
+		switch(position) {
+		case PositionType.LEFT:
+		case PositionType.RIGHT:
+			minimum_height = (int)(width*2.0);
+			natural_height = (int)(width*2.0);
+			break;
+		case PositionType.BOTTOM:
+		case PositionType.TOP:
+			minimum_height = (int)(width*0.6);
+			natural_height = (int)(width*0.6);
+			break;
+		default:
+			natural_height = width;
+			break;
+		}
 	}
 	
 	protected override void draw_bg_pre(Context ctx) {
 	   
-		if(bottom_align) {
-			ctx.translate(0, radius);
+//		Allocation a;
+//		get_allocation(out a);
+//		stdout.printf("%d:%d\n", a.width, a.height);
+
+		switch(position) {
+		case PositionType.BOTTOM:
+			ctx.rectangle(0, 0, radius*2, radius*1.1);
+			ctx.clip();
+			break;
+		case PositionType.TOP:
+			ctx.translate(radius, radius);
+			ctx.rotate(Math.PI);
+			ctx.translate(-radius, -radius*0.1);
+			ctx.rectangle(0, 0, radius*2, radius*1.1);
+			ctx.clip();
+			break;
+		case PositionType.LEFT:
+			ctx.translate(radius, radius);
+			ctx.rotate(Math.PI/2.0);
+			ctx.translate(-radius, -radius*0.1);
+			ctx.rectangle(0, 0, radius*2, radius*1.1);
+			ctx.clip();
+			break;
+		case PositionType.RIGHT:
+			ctx.translate(radius, radius);
+			ctx.rotate(1.5*Math.PI);
+			ctx.translate(-radius, -radius);
+			ctx.rectangle(0, 0, radius*2, radius*1.1);
+			ctx.clip();
+			break;
 		}
-		ctx.rectangle(0, 0, radius*2, radius*1.1);
-		ctx.clip();
 	}
 	
 	protected override void draw_hand_pre(Context ctx) {
 		
-		if(bottom_align) {
-			ctx.translate(0, radius);
+		switch(position) {
+		case PositionType.BOTTOM:
+			break;
+		case PositionType.TOP:
+			ctx.translate(radius,radius);
+			ctx.rotate(Math.PI);
+			ctx.translate(-radius, -radius*0.1);
+			break;
+		case PositionType.LEFT:
+			ctx.translate(radius, radius);
+			ctx.rotate(Math.PI/2.0);
+			ctx.translate(-radius, -radius*0.1);
+			break;
+		case PositionType.RIGHT:
+			ctx.translate(radius, radius);
+			ctx.rotate(1.5*Math.PI);
+			ctx.translate(-radius, -radius);
+			break;
 		}
 	}
+
 	protected override int get_label_ypos() {
 		
 		return ((int)(radius));

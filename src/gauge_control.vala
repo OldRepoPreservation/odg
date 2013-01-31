@@ -132,7 +132,9 @@ public class GaugeControl: GLib.Object {
 				GaugeList l = gauge_alarms.lookup(m.name);
 				if(l != null) {
 					foreach(ControlIF cif in l.list) {
-						cif.alarm.is_valid = (m as AlarmMsg).valid;
+						if(cif.alarm != null) {
+							cif.alarm.is_valid = (m as AlarmMsg).valid;
+						}
 					}	
 					continue;
 				} else {
@@ -180,7 +182,9 @@ public class GaugeControl: GLib.Object {
 			GaugeList l = gauge_alarms.lookup(m.name);
 			if(l != null) {
 				foreach(ControlIF cif in l.list) {
-					cif.alarm.is_valid = (m as AlarmMsg).valid;
+					if(cif.alarm != null) {
+						cif.alarm.is_valid = (m as AlarmMsg).valid;
+					}
 				}	
 				return true;
 			} else {

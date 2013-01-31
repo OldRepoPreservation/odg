@@ -25,16 +25,10 @@ public class RoundMeterConfig {
 	private uint real_low_range_highlight;
 	private uint real_mid_range_highlight;
 	private uint real_high_range_highlight;
-	private double real_hand_line_width_base;
-	private double real_range_shift_angle_coeff;
-	private double real_range_scale;
 
 	public uint *low_range_highlight { get; private set; default=null; }
 	public uint *mid_range_highlight { get; private set; default=null; }
 	public uint *high_range_highlight { get; private set; default=null; }
-	public double *hand_line_width_base { get; private set; default=null; }
-	public double *range_shift_angle_coeff { get; private set; default=null; }
-	public double *range_scale { get; private set; default=null; }
 	public string label { get; private set; default=null; }
 	public string[] mark_labels { get; set; default = null; }
 	
@@ -42,41 +36,24 @@ public class RoundMeterConfig {
 		label = l;
 	}
 	
-	public RoundMeterConfig.with_label_and_highlight(string l,
-													 uint low_range_hl,
-													 uint mid_range_hl,
-													 uint high_range_hl) {
+	public RoundMeterConfig.with_label_and_mark_labels(string l, string[] ml) {
 		label = l;
-		real_low_range_highlight = low_range_hl;
-		real_mid_range_highlight = mid_range_hl;
-		real_high_range_highlight = high_range_hl;
-		low_range_highlight = &real_low_range_highlight;
-		mid_range_highlight = &real_mid_range_highlight;
-		high_range_highlight = &real_high_range_highlight;
+		mark_labels = ml;
 	}
 	
-	public RoundMeterConfig.with_all(string l,
-									 uint low_range_hl,
-									 uint mid_range_hl,
-									 uint high_range_hl,
-									 string lbl_txt,
-		                             uint h_l_w_b,
-		                             uint r_s_a_c,
-		                             uint r_s) {
-		
+	public RoundMeterConfig.with_labels_and_highlight(string l,
+													  string[] ml,
+													  uint low_range_hl,
+													  uint mid_range_hl,
+													  uint high_range_hl) {
 		label = l;
+		mark_labels = ml;
 		real_low_range_highlight = low_range_hl;
 		real_mid_range_highlight = mid_range_hl;
 		real_high_range_highlight = high_range_hl;
 		low_range_highlight = &real_low_range_highlight;
 		mid_range_highlight = &real_mid_range_highlight;
 		high_range_highlight = &real_high_range_highlight;
-		real_hand_line_width_base = h_l_w_b;
-		real_range_shift_angle_coeff = r_s_a_c;
-		real_range_scale = r_s;
-		hand_line_width_base = &real_hand_line_width_base;
-		range_shift_angle_coeff = &real_range_shift_angle_coeff;
-		range_scale = &real_range_scale;
 	}
 }
 
@@ -98,15 +75,6 @@ void round_meter_set_config_default(RoundMeter m, RoundMeterConfig c) {
 	}
 	if(c.high_range_highlight != null) {
 		m.high_range_highlight = *(c.high_range_highlight);
-	}
-	if(c.hand_line_width_base != null) {
-		m.hand_line_width_base = *(c.hand_line_width_base);
-	}
-	if(c.range_shift_angle_coeff != null) {
-		m.range_shift_angle_coeff = *(c.range_shift_angle_coeff);
-	}
-	if(c.range_scale != null) {
-		m.range_scale = *(c.range_scale);
 	}
 }
 
@@ -136,11 +104,9 @@ public class RoundMeter: Gauge {
 	public uint mid_range_highlight { get; set; default = 50;}
 	public uint high_range_highlight { get; set; default = 20;}
 
-// these 3 properties are really meant to be used internally
-// but can be also set if so desired
-	public double hand_line_width_base { get; set; default = 0.05; }
-	public double range_shift_angle_coeff { get; set; default = 0.375; }
-	public double range_scale { get; set; default = 0.75; }
+	protected double hand_line_width_base { get; set; default = 0.05; }
+	protected double range_shift_angle_coeff { get; set; default = 0.375; }
+	protected double range_scale { get; set; default = 0.75; }
 	
 	public void set_config(RoundMeterConfigDelegate d,
 						   RoundMeterConfig c) {
@@ -552,6 +518,11 @@ public class RoundMeter: Gauge {
 		return val / 255.0;
 	}
 
+	protected virtual double calc_radius(Allocation allocation) {
+		
+		return (allocation.width / 2);
+	}
+	
 	protected virtual void on_size_allocate(Allocation allocation) {
 /*
  * This method gets called by Gtk+ when the actual size is known
@@ -559,7 +530,7 @@ public class RoundMeter: Gauge {
  * It is called every time the widget size changes, for example when the
  * user resizes the window.
  */
-		radius = allocation.width / 2;
+		radius = calc_radius(allocation);
 		calc_marks();
 		calc_sub_marks();
 		create_gradient();
