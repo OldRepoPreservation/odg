@@ -18,14 +18,24 @@
 
 using Gtk;
 
+
+public interface CurrentValueFilter: Object {
+
+	public abstract double filter(double value);
+}
+
+
 public class Gauge: Widget, ControlIF {
 
 	construct {
 		notify.connect(on_property_changed);
 	}
-	
+
+	public CurrentValueFilter cv_filter { get; set; default=null; }
+
 	public double current_value { get; set; default=0.0; }
 	public string label { get; set; default="Label"; }
+	public string sub_label { get; set; default=""; }
 	public Alarm alarm { get; set; }
 	
 	protected signal void current_value_changed();
@@ -36,6 +46,11 @@ public class Gauge: Widget, ControlIF {
 
 		switch(p.name) {
 		case "current-value":
+			if(cv_filter != null) {
+				notify.disconnect(on_property_changed);
+				current_value = cv_filter.filter(current_value);
+				notify.connect(on_property_changed);
+			}
 			on_current_value_changed();
 			break;
 		case "label":
@@ -47,20 +62,27 @@ public class Gauge: Widget, ControlIF {
 		}
 	}
 	
+	protected void filter_current_value() {
+
+		if(cv_filter != null) {
+			current_value = cv_filter.filter(current_value); 
+		}
+	}
+
 	protected virtual void on_label_changed() {
 		label_changed();
-		stdout.printf("**UNIMPLEMENTED** Set label: %s\n", label);
+//		stdout.printf("**UNIMPLEMENTED** Set label: %s\n", label);
 	}
 
 	protected virtual void on_current_value_changed() {
 		current_value_changed();
-		stdout.printf("**UNIMPLEMENTED** Current value changed: %f\n",
-					  current_value);
+//		stdout.printf("**UNIMPLEMENTED** Current value changed: %f\n",
+//					  current_value);
 	}
 
 	protected virtual void on_alarm_changed() {
 		alarm_changed();
-		stdout.printf("**UNIMPLEMENTED** Alarm changed: %s\n", alarm.name);
+//		stdout.printf("**UNIMPLEMENTED** Alarm changed: %s\n", alarm.name);
 	}
 }
 

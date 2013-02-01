@@ -412,7 +412,7 @@ public class RoundMeter: Gauge {
 		double w;
 		double h;
 
-// Pango could be also used but it did not display all characters ???
+// Pango could be also used but cairo will do for few simple chars
 		ctx.set_font_size(radius/7.0);
 		ctx.select_font_face("Sans", FontSlant.NORMAL, FontWeight.BOLD);
 		TextExtents te;

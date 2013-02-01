@@ -21,6 +21,7 @@ public interface ControlIF: Object {
 
 	public abstract double current_value { get; set; }
 	public abstract string label { get; set; }
+	public abstract string sub_label { get; set; }
 	public abstract Alarm alarm { get; set; }
 	
 	protected abstract void on_label_changed();
