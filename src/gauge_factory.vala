@@ -40,7 +40,9 @@ public class GaugeFactory {
 		if(gauge_type == "numeric_meter") {
 			return new NumericMeter();
 		}
-
+		if(gauge_type == "hbar_meter") {
+			return new HBarMeter();
+		}
 		return null;
 	}
 }

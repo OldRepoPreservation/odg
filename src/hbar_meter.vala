@@ -21,23 +21,22 @@ using Cairo;
 using OdgUtils;
 
 
-public class NumericMeter: Gauge {
-	
+public class HBarMeter: Gauge {
+
+	public bool ghost_mark { get; set; default=false; }
 	public uint range { get; set; default=100; }
-	public uint precision { get; set; default=1; }
-	public uint low_range_highlight { get; set; default = 20;}
-	public uint mid_range_highlight { get; set; default = 60;}
-	public uint high_range_highlight { get; set; default = 20;}
-	
-	protected double font_size;
-	protected char []cv_str;
+	public uint low_range_highlight { get; set; default=20;}
+	public uint mid_range_highlight { get; set; default=60;}
+	public uint high_range_highlight { get; set; default=20;}
 	
 	private Surface bg_layer;
-	private Surface num_layer;
+	private Surface bar_layer;
 	private bool redraw_all;
-
-	public NumericMeter(uint rng=100) {
-
+	private double old_value;
+	private Cairo.Pattern grad;
+	
+	public HBarMeter(uint rng=100) {
+		
 		range = rng;
 		current_value_changed.connect(receive_current_value_changed);
 		label_changed.connect(receive_label_changed);
@@ -47,12 +46,10 @@ public class NumericMeter: Gauge {
 		expand = true;
 		app_paintable = true;
         double_buffered = false;
-		var tmp = (range.to_string()+".");
-		cv_str = new char[tmp.length + precision + 1];
-		current_value.format(cv_str, "%0.01f");
 		redraw_all = true;
+		old_value = 0.0;
 	}
-
+	
 	protected virtual void create_bg_layer() {
 		
 		var my_wnd = get_window();
@@ -69,59 +66,64 @@ public class NumericMeter: Gauge {
 		}
 	}
 
-	protected virtual void create_num_layer() {
+	protected virtual void create_bar_layer() {
 		
 		var my_wnd = get_window();
 		if (my_wnd != null) {
 			
 			var region = my_wnd.get_clip_region();
 			var rect = region.get_extents();
-			num_layer = my_wnd.create_similar_surface(Content.COLOR_ALPHA,
+			bar_layer = my_wnd.create_similar_surface(Content.COLOR_ALPHA,
 													  rect.width, rect.height);
-			var num_ctx = new Context(num_layer);
-			num_ctx.set_source_rgba(1.0,1.0,1.0,0.0);
-			num_ctx.set_operator(Cairo.Operator.SOURCE);
-			num_ctx.paint();
+			var bar_ctx = new Context(bar_layer);
+			bar_ctx.set_source_rgba(1.0,1.0,1.0,0.0);
+			bar_ctx.set_operator(Cairo.Operator.SOURCE);
+			bar_ctx.paint();
 		}
 	}
 
-	protected virtual void draw_bg(Context ctx) {
+	protected virtual void draw_marks(Context ctx, int w, int h) {
 
-		Allocation a;
-		get_allocation(out a);
+	}
 
-		draw_rect(ctx, 0.05*a.width, 0.05*a.width, 0.94*a.width, 0.90*a.height,
-				  null);
+	protected virtual void draw_bg(Context ctx, int width, int height) {
+
+		var font_size = height/4.0;
 		
+		draw_rect(ctx, 0.01*width, 0.01*width, 0.98*width, 0.95*height, grad);
+		draw_marks(ctx, width, height);
+
 		ctx.set_source_rgba (1.0, 1.0, 1.0, 0.5);
 		ctx.select_font_face("Sans", FontSlant.NORMAL, FontWeight.NORMAL);
-		ctx.set_font_size(font_size/3.0);
-		ctx.move_to(0.1*a.width, 0.3*a.height);
+		ctx.set_font_size(font_size);
+		ctx.move_to(0.05*width, 0.3*height);
 		ctx.show_text(label);
 		ctx.stroke();
 
 		ctx.set_source_rgba (1.0, 1.0, 1.0, 0.3);
-		ctx.set_font_size(font_size/5.0);
+		ctx.set_font_size(font_size/1.5);
 		TextExtents te;
 		ctx.text_extents(sub_label, out te);
-		ctx.move_to(a.width-(te.width+20), 0.25*a.height);
+		ctx.move_to(width-(te.width+20), 0.25*height);
 		ctx.show_text(sub_label);
+		ctx.stroke();
+
+		ctx.translate(0.09*width, 0.58*height);
+		ctx.set_source_rgba (1.0, 1.0, 1.0, 0.3);
+		ctx.rectangle(0, 0, 0.85*width, 0.14*height);
 		ctx.stroke();
 	}
 
-	protected virtual void draw_num(Context ctx) {
-
-		Allocation a;
-		get_allocation(out a);
-
-		// erase all (to transparent)
-		ctx.set_source_rgba(1.0, 1.0, 1.0, 0.0);
-		ctx.set_operator(Cairo.Operator.SOURCE);
-		ctx.paint();		
-
-		current_value.format(cv_str, "%0.01f");
+	protected virtual void draw_bar(Context ctx, int max_width, int height) {
 		
-		ctx.move_to(0.1*a.width, 0.9*a.height);
+		ctx.translate(0.1*max_width, 0.6*height);
+		
+		// erase bar rectangle
+		ctx.set_operator(Cairo.Operator.CLEAR);
+		ctx.rectangle(0, 0, calc_bar_width(old_value, 0.85*max_width),
+					  0.11*height);
+		ctx.fill();
+		
 		if(current_value < low_range_highlight) {
 			ctx.set_source_rgba(c(200), c(255), c(0), 0.6);
 		} else if(current_value > (high_range_highlight+
@@ -130,15 +132,20 @@ public class NumericMeter: Gauge {
 		} else {
 			ctx.set_source_rgba(c(0), c(255), c(0), 0.6);
 		}
-		ctx.select_font_face("Sans", FontSlant.NORMAL, FontWeight.NORMAL);
-		ctx.set_font_size(font_size);
-		ctx.show_text((string)cv_str);
-		ctx.stroke();
+		ctx.set_operator(Cairo.Operator.SOURCE);
+		ctx.rectangle(0, 0, calc_bar_width(current_value, 0.83*max_width),
+					  0.10*height);
+		ctx.fill();
+		
+		old_value = current_value;
 	}
 
 	/* Actual method for widget to draw it self */
 	protected virtual bool on_draw(Context ctx) {
-
+		
+		Allocation a;
+		get_allocation(out a);
+		
 		if(current_value > range) {
 			current_value = range;
 		}
@@ -146,17 +153,19 @@ public class NumericMeter: Gauge {
 		// (re)create background only on demand
 		if(redraw_all) {
 			var bg_ctx = new Context(bg_layer);
-			draw_bg(bg_ctx);
+			draw_bg(bg_ctx, a.width, a.height);
 		}
-		var num_ctx = new Context(num_layer);
-		draw_num(num_ctx);
+		
+		var bar_ctx = new Context(bar_layer);
+		draw_bar(bar_ctx, a.width, a.height);
+
 		// paint background from background layer surface
 		ctx.set_source_surface(bg_layer, 0 ,0);
 		ctx.set_operator(Cairo.Operator.SOURCE);
 		ctx.paint();
-
-		// and paint number on top of background from num layer surface
-		ctx.set_source_surface(num_layer, 0 ,0);
+		
+		// and paint bar on top of background from bar layer surface
+		ctx.set_source_surface(bar_layer, 0 ,0);
 		ctx.set_operator(Cairo.Operator.ATOP);
 		ctx.paint_with_alpha(0.7);
 		
@@ -179,6 +188,7 @@ public class NumericMeter: Gauge {
 				return false;
 			});
 	}
+
 	
 	protected virtual void on_size_allocate(Allocation allocation) {
 /*
@@ -187,40 +197,21 @@ public class NumericMeter: Gauge {
  * It is called every time the widget size changes, for example when the
  * user resizes the window.
  */
-		// try to calculate correct font size
-		var my_wnd = get_window();
-		if (my_wnd != null) {
-			
-			var region = my_wnd.get_clip_region();
-			var rect = region.get_extents();
-			var s = my_wnd.create_similar_surface(Content.COLOR_ALPHA,
-												  rect.width, rect.height);
-			var ctx = new Context(s);
-			ctx.select_font_face("Sans", FontSlant.NORMAL, FontWeight.NORMAL);
-			font_size = allocation.height;
-			ctx.set_font_size(font_size);
-			var tmp = (range.to_string()+".");
-			char []str = new char[tmp.length + precision + 1];
-			((double)range).format(str, "%0.01f");
-			TextExtents te;
-			ctx.text_extents((string)str, out te);
-			while(te.width+(0.1*rect.width) > allocation.width) {
-				
-				font_size *= 0.95;
-				ctx.set_font_size(font_size);
-				ctx.text_extents((string)str, out te);
-			}
-
-			create_bg_layer();
-			create_num_layer();
-			var ctx1 = new Context(bg_layer);
-			draw_bg(ctx1);
-			var ctx2 = new Context(num_layer);
-			draw_num(ctx2);
-		}
+		grad = new Cairo.Pattern.linear(0, 0, 0.94*allocation.width,
+										0.90*allocation.height);
+		grad.add_color_stop_rgba(0.0, c(10), c(10), c(10), 1.0);
+		grad.add_color_stop_rgba(0.5, c(10), c(10), c(190), 0.5);
+		grad.add_color_stop_rgba(1.0, c(10), c(10), c(190), 0.2);
+		
+		create_bg_layer();
+		create_bar_layer();
+		var ctx1 = new Context(bg_layer);
+		draw_bg(ctx1, allocation.width, allocation.height);
+		var ctx2 = new Context(bar_layer);
+		draw_bar(ctx2, allocation.width, allocation.height);
 	}
 
-	public override SizeRequestMode get_request_mode () {
+	public override SizeRequestMode get_request_mode() {
 		
 		return SizeRequestMode.HEIGHT_FOR_WIDTH;
 	}
@@ -232,10 +223,14 @@ public class NumericMeter: Gauge {
 		minimum_height = calc_height(width);
 		natural_height = minimum_height;
 	}
-
 	
 	protected virtual int calc_height(int w) {
 		
-		return (int)(w*0.5);
+		return (int)(w*0.2);
+	}
+
+	protected virtual double calc_bar_width(double value, double max) {
+
+		return ((value/(double)range) * max);
 	}
 }

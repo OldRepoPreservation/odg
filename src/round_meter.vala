@@ -18,6 +18,7 @@
 
 using Gtk;
 using Cairo;
+using OdgUtils;
 
 
 public class RoundMeterConfig {
@@ -227,6 +228,7 @@ public class RoundMeter: Gauge {
 		redraw_all = true;
 		return true;
 	}
+
 	protected virtual void create_bg_layer() {
 		
 		var my_wnd = get_window();
@@ -511,11 +513,6 @@ public class RoundMeter: Gauge {
 
 		draw_hand_post(ctx);
 //		stdout.printf("draw_hand()\n");
-	}
-
-	private double c(int val) {
-
-		return val / 255.0;
 	}
 
 	protected virtual double calc_radius(Allocation allocation) {

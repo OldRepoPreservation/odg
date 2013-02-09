@@ -48,7 +48,7 @@ public class Gauge: Widget, ControlIF {
 		case "current-value":
 			if(cv_filter != null) {
 				notify.disconnect(on_property_changed);
-				current_value = cv_filter.filter(current_value);
+				current_value = filter_current_value(current_value);
 				notify.connect(on_property_changed);
 			}
 			on_current_value_changed();
@@ -62,11 +62,12 @@ public class Gauge: Widget, ControlIF {
 		}
 	}
 	
-	protected void filter_current_value() {
+	protected double filter_current_value(double value) {
 
 		if(cv_filter != null) {
-			current_value = cv_filter.filter(current_value); 
+			return cv_filter.filter(value); 
 		}
+		return value;
 	}
 
 	protected virtual void on_label_changed() {

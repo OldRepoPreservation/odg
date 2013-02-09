@@ -23,7 +23,7 @@ int main (string[] args) {
 	Gtk.init (ref args);
 
 	var wnd = new Window();
-	wnd.title = "Gauge test1";
+	wnd.title = "Gauge test6";
 	wnd.destroy.connect (Gtk.main_quit);
 	
 	Gtk.Grid grid = new Gtk.Grid();
