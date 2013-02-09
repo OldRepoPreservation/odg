@@ -24,10 +24,14 @@ using OdgUtils;
 public class HBarMeter: Gauge {
 
 	public bool ghost_mark { get; set; default=false; }
-	public uint range { get; set; default=100; }
+	public uint range { get; set; default=10; }
+	public bool draw_range { get; set; default=true; }
+	public uint sub_range { get; set; default=9; }
+	public bool draw_sub_range { get; set; default=false; }
 	public uint low_range_highlight { get; set; default=20;}
 	public uint mid_range_highlight { get; set; default=60;}
-	public uint high_range_highlight { get; set; default=20;}
+	public uint high_range_highlight { get; set; default=10;}
+	public string[] mark_labels { get; set; default = null; }
 	
 	private Surface bg_layer;
 	private Surface bar_layer;
@@ -83,7 +87,79 @@ public class HBarMeter: Gauge {
 	}
 
 	protected virtual void draw_marks(Context ctx, int w, int h) {
+		
+		ctx.save();
 
+		ctx.set_line_width(0.02*h);
+		var one_len = calc_bar_width(sub_range, 0.83*w);
+		ctx.set_source_rgba (1.0, 1.0, 1.0, 0.6);
+		ctx.translate(0.1*w, 0.65*h);
+		
+		for(int i=1; i<=range; i++) {
+			
+			ctx.move_to(0, 0);
+			ctx.line_to(0, h*0.15);
+			ctx.translate(one_len, 0);
+		}
+		ctx.stroke();
+
+		ctx.restore();
+	}
+
+	protected virtual void draw_sub_marks(Context ctx, int w, int h) {
+
+		ctx.save();
+
+		ctx.set_line_width(0.01*h);
+		var one_len = calc_bar_width(sub_range, 0.83*w)/(double)sub_range;
+		ctx.set_source_rgba (1.0, 1.0, 1.0, 0.6);
+		ctx.translate(0.1*w+one_len, 0.70*h);
+		
+		for(int i=1; i<=range*sub_range; i++) {
+			
+			ctx.move_to(0, 0);
+			ctx.line_to(0, h*0.05);
+			ctx.translate(one_len, 0);
+		}
+		ctx.stroke();
+
+		ctx.restore();
+	}
+
+	protected virtual void draw_mark_labels(Context ctx, int w, int h) {
+		
+	}
+
+	protected virtual void draw_highlight(Context ctx, int w, int h) {
+
+		ctx.save();
+		ctx.set_line_width(0.03*h);
+
+		ctx.translate(0.1*w, 0.55*h);
+//		stdout.printf("translate(%f,%f)\n", 0.1*w, 0.5*h);
+
+		var bar_len = calc_bar_width(low_range_highlight, 0.83*w);
+		ctx.set_source_rgba(c(200), c(255), c(0), 0.6);
+		ctx.move_to(0, 0);
+		ctx.line_to(bar_len, 0);
+//		stdout.printf("line_to(%f,%f)\n", bar_len, 0);
+		ctx.stroke();
+		
+		ctx.translate(bar_len, 0);
+		bar_len = calc_bar_width(mid_range_highlight, 0.83*w);
+		ctx.set_source_rgba(c(0), c(255), c(0), 0.6);
+		ctx.move_to(0, 0);
+		ctx.line_to(bar_len, 0);
+		ctx.stroke();
+
+		ctx.translate(bar_len, 0);
+		bar_len = calc_bar_width(high_range_highlight, 0.83*w);
+		ctx.set_source_rgba(c(150), c(50), c(0), 0.6);
+		ctx.move_to(0, 0);
+		ctx.line_to(bar_len, 0);
+		ctx.stroke();
+
+		ctx.restore();
 	}
 
 	protected virtual void draw_bg(Context ctx, int width, int height) {
@@ -91,7 +167,15 @@ public class HBarMeter: Gauge {
 		var font_size = height/4.0;
 		
 		draw_rect(ctx, 0.01*width, 0.01*width, 0.98*width, 0.95*height, grad);
-		draw_marks(ctx, width, height);
+
+		if(draw_range) {
+			draw_marks(ctx, width, height);
+		}
+		if(draw_sub_range) {
+			draw_sub_marks(ctx, width, height);
+		}
+		draw_mark_labels(ctx, width, height);
+		draw_highlight(ctx, width, height);
 
 		ctx.set_source_rgba (1.0, 1.0, 1.0, 0.5);
 		ctx.select_font_face("Sans", FontSlant.NORMAL, FontWeight.NORMAL);
@@ -108,9 +192,9 @@ public class HBarMeter: Gauge {
 		ctx.show_text(sub_label);
 		ctx.stroke();
 
-		ctx.translate(0.09*width, 0.58*height);
+		ctx.translate(0.09*width, 0.50*height);
 		ctx.set_source_rgba (1.0, 1.0, 1.0, 0.3);
-		ctx.rectangle(0, 0, 0.85*width, 0.14*height);
+		ctx.rectangle(0, 0, 0.85*width, 0.23*height);
 		ctx.stroke();
 	}
 
@@ -120,18 +204,12 @@ public class HBarMeter: Gauge {
 		
 		// erase bar rectangle
 		ctx.set_operator(Cairo.Operator.CLEAR);
-		ctx.rectangle(0, 0, calc_bar_width(old_value, 0.85*max_width),
+		ctx.rectangle(0, -1, calc_bar_width(old_value, 0.85*max_width),
 					  0.11*height);
 		ctx.fill();
-		
-		if(current_value < low_range_highlight) {
-			ctx.set_source_rgba(c(200), c(255), c(0), 0.6);
-		} else if(current_value > (high_range_highlight+
-								   mid_range_highlight)) {
-			ctx.set_source_rgba(c(150), c(50), c(0), 0.6);
-		} else {
-			ctx.set_source_rgba(c(0), c(255), c(0), 0.6);
-		}
+
+		// draw new bar rectangle
+		ctx.set_source_rgba(1.0, 1.0, 1.0, 0.8);
 		ctx.set_operator(Cairo.Operator.SOURCE);
 		ctx.rectangle(0, 0, calc_bar_width(current_value, 0.83*max_width),
 					  0.10*height);
@@ -146,8 +224,8 @@ public class HBarMeter: Gauge {
 		Allocation a;
 		get_allocation(out a);
 		
-		if(current_value > range) {
-			current_value = range;
+		if(current_value > range*sub_range) {
+			current_value = range*sub_range;
 		}
 		
 		// (re)create background only on demand
@@ -231,6 +309,6 @@ public class HBarMeter: Gauge {
 
 	protected virtual double calc_bar_width(double value, double max) {
 
-		return ((value/(double)range) * max);
+		return ((value/(double)(range*sub_range)) * max);
 	}
 }

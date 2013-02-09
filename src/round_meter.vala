@@ -100,7 +100,9 @@ public class RoundMeter: Gauge {
 
 	public string[] mark_labels { get; set; default = null; }
 	public uint range { get; set; default = 10; }
+	public bool draw_range { get; set; default=true; }
 	public uint sub_range { get; set; default = 9; }
+	public bool draw_sub_range { get; set; default=true; }
 	public uint low_range_highlight { get; set; default = 20;}
 	public uint mid_range_highlight { get; set; default = 50;}
 	public uint high_range_highlight { get; set; default = 20;}
@@ -455,9 +457,12 @@ public class RoundMeter: Gauge {
 
 		draw_range_highlight(ctx);
 		draw_marks_bg(ctx);
-		draw_sub_marks(ctx);
-		draw_marks(ctx);
-
+		if(draw_sub_range) {
+			draw_sub_marks(ctx);
+		}
+		if(draw_range) {
+			draw_marks(ctx);
+		}
 		draw_label(ctx, get_label_ypos());
 		draw_mark_labels(ctx);
 
