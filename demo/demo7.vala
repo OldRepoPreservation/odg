@@ -113,17 +113,63 @@ int main (string[] args) {
 	g1.sub_range = 10;
 	g1.draw_range = true;
 	g1.draw_sub_range = true;
-	g1.low_range_highlight = 30;
-	g1.mid_range_highlight = 60;
-	g1.high_range_highlight = 10;
-	g1.label = "Throttle";
+	g1.low_range_highlight =10;
+	g1.mid_range_highlight = 85;
+	g1.high_range_highlight = 5;
+	g1.label = "BFV";
 	g1.sub_label = "pos";
+	g1.mark_labels = {"CT", "", "", "", "", "1/2", "", "", "", "", "WOT"};
 	grid.attach(g1, 0, 0, 1, 1);
-		
+	
+	var gif2 = GaugeFactory.get_instance().new_gauge("hbar_meter");
+	var g2 = gif2 as HBarMeter;
+	g2.range = 10;
+	g2.sub_range = 10;
+	g2.draw_range = true;
+	g2.draw_sub_range = true;
+	g2.low_range_highlight = 30;
+	g2.mid_range_highlight = 70;
+	g2.high_range_highlight = 0;
+	g2.label = "MAP";
+	g2.sub_label = "bar";
+	g2.mark_labels = {"0", "", "", "", "idle", ".5", ".6", ".7", ".8", ".9", "WOT"};
+	grid.attach(g2, 0, 1, 1, 1);
+
+	var gif3 = GaugeFactory.get_instance().new_gauge("hbar_meter");
+	var g3 = gif3 as HBarMeter;
+	g3.range = 5;
+	g3.sub_range = 10;
+	g3.draw_range = true;
+	g3.draw_sub_range = false;
+	g3.low_range_highlight = 3;
+	g3.mid_range_highlight = 17;
+	g3.high_range_highlight = 30;
+	g3.label = "EGO";
+	g3.sub_label = "%";
+	g3.mark_labels = {"0", "", "", "", "", "100"};
+	grid.attach(g3, 0, 2, 1, 1);
+
+	var gif4 = GaugeFactory.get_instance().new_gauge("hbar_meter");
+	var g4 = gif4 as HBarMeter;
+	g4.range = 5;
+	g4.sub_range = 10;
+	g4.draw_range = true;
+	g4.draw_sub_range = false;
+	g4.low_range_highlight = 15;
+	g4.mid_range_highlight = 25;
+	g4.high_range_highlight = 10;
+	g4.label = "IAT";
+	g4.sub_label = "C°";
+	g4.mark_labels = {"MIN", "", "", "21", "", "MAX"};
+	grid.attach(g4, 0, 3, 1, 1);
+
 	wnd.show_all ();
-	wnd.resize(480, 120);
+	wnd.resize(480, 480);
 
 	gif1.current_value = 0.0;
+	gif2.current_value = 41.4;
+	gif3.current_value = 12.3;
+	gif4.current_value = 35.1;
 
 	GaugeControl.use_thread = true;
 	GaugeControl gctrl = GaugeControl.get_instance();

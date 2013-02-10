@@ -95,7 +95,7 @@ public class HBarMeter: Gauge {
 		ctx.set_source_rgba (1.0, 1.0, 1.0, 0.6);
 		ctx.translate(0.1*w, 0.65*h);
 		
-		for(int i=1; i<=range; i++) {
+		for(int i=0; i<=range; i++) {
 			
 			ctx.move_to(0, 0);
 			ctx.line_to(0, h*0.15);
@@ -128,6 +128,31 @@ public class HBarMeter: Gauge {
 
 	protected virtual void draw_mark_labels(Context ctx, int w, int h) {
 		
+		ctx.save();
+		if(mark_labels != null) {
+			
+			ctx.set_font_size(h/8.0);
+			ctx.select_font_face("Sans", FontSlant.NORMAL, FontWeight.NORMAL);
+			TextExtents te;
+			uint i = 0;
+			ctx.translate(0.1*w, 0.65*h);
+			ctx.set_source_rgba (1.0, 1.0, 1.0, 0.5);
+			var one_len = calc_bar_width(sub_range, 0.83*w);
+			foreach(string ml in mark_labels) {
+
+				if(i > range+1) {
+					break;
+				}
+				ctx.text_extents(ml, out te);
+//				stdout.printf("te.width[%d]=%f\n", (int)i, te.width);
+				ctx.move_to(-((te.width/2.0)+0.01*h), 3.0*te.height);
+				ctx.show_text(ml);
+				ctx.translate(one_len, 0);
+				i++;
+			}
+		}
+		ctx.stroke();
+		ctx.restore();
 	}
 
 	protected virtual void draw_highlight(Context ctx, int w, int h) {
